@@ -28,7 +28,7 @@ def id_search(url : str) -> list :
 
 id_search('')
 
-def isbn_search(comcode : str, goods_id : str) -> str:
+def isbn_search(comcode: str, goods_id: str) -> str:
     comcode = comcode.upper()
     if comcode in ["YES24", "YES"]:  # YES24
         url = "https://www.yes24.com/product/goods/" + goods_id
@@ -49,15 +49,15 @@ def isbn_search(comcode : str, goods_id : str) -> str:
             isbn = isbn.select_one('tbody > tr:nth-child(2) > td')
             isbn = isbn.get_text().strip()
             isbn_loc = isbn.find('ISBN')
-            if isbn_loc > -1 :
+            if isbn_loc > -1:
                 isbn_tmp = isbn[isbn_loc + 5:isbn_loc + 18]
                 isbn_check = isbn_tmp.find(':')
-                if isbn_check > -1 :
+                if isbn_check > -1:
                     isbn = isbn[isbn_loc + 7:isbn_loc + 20]
-                else :
+                else:
                     isbn = isbn_tmp
                 return isbn
-            else :
+            else:
                 print("KYOBO : 결과 없음")
         else:
             print("KYOBO : 결과 없음")
@@ -69,11 +69,22 @@ def isbn_search(comcode : str, goods_id : str) -> str:
         soup = BeautifulSoup(request_isbn.content.decode('utf-8', 'replace'), "html.parser")
         isbn = soup.find('div', 'conts_info_list2')
         if isbn:
-            isbn = isbn.select_one('ul > li:nth-child(5)')
-            try:
-                isbn = int(isbn.get_text()[-13:])
-                return str(isbn)
-            except :
+            isbn = isbn.get_text().strip()
+            isbn_loc = isbn.find('ISBN')
+            if isbn_loc < 0 :
+                isbn = soup.find('div', 'conts_info_list1')
+                if isbn :
+                    isbn = isbn.get_text().strip()
+                    isbn_loc = isbn.find('ISBN')
+            if isbn_loc > -1:
+                isbn_tmp = isbn[isbn_loc + 5:isbn_loc + 18]
+                isbn_check = isbn_tmp.find(':')
+                if isbn_check > -1:
+                    isbn = isbn[isbn_loc + 7:isbn_loc + 20]
+                else:
+                    isbn = isbn_tmp
+                return isbn
+            else :
                 print("ALADIN : 결과 없음")
         else:
             print("ALADIN : 결과 없음")
@@ -82,37 +93,39 @@ def isbn_search(comcode : str, goods_id : str) -> str:
         print("지원하지 않는 유통사")
 
 
-for i in stored_data :
+for i in stored_data:
     comcode = i[0]
-    if comcode.upper() in ['YS','YES','YES24'] :
+    if comcode.upper() in ['YS', 'YES', 'YES24']:
         comcode = 'YES24'
-    elif comcode.upper() in ['KB','KYOBO'] :
+    elif comcode.upper() in ['KB', 'KYOBO']:
         comcode = "KYOBO"
-    elif comcode.upper() in ['ALADIN'] :
+    elif comcode.upper() in ['ALADIN']:
         comcode = "ALADIN"
     goods_id = i[1]
-    content_title = i[2]
     sql = "select * from isbn where comcode ='" + comcode + "'and goods_id ='" + goods_id + "'"
     out_cursor.execute(sql)
     row_result = out_cursor.rowcount
-    if row_result == 0 :
+    if row_result == 0:
         print("조회 결과 없음 - " + goods_id)
         isbn_result = isbn_search(comcode, goods_id)
-        if isbn_result :
-            sql = "insert into isbn (comcode,goods_id,isbn,content_title) values ('" + comcode + "','" + goods_id + "','" + isbn_result + "','" + content_title.replace("'","\\'") +"')"
+        if isbn_result:
+            sql = "insert into isbn (comcode,goods_id,isbn) values ('" + comcode + "','" \
+                  + goods_id + "','" + isbn_result + "') "
             out_cursor.execute(sql)
             outdb.commit()
             print("검색된 isbn - " + isbn_result)
-        else :
-            sql = "insert into isbn (comcode,goods_id,isbn,content_title) values ('" + comcode + "','" + goods_id + "','','" + content_title.replace("'","\\'") +"')"
+        else:
+            sql = 'insert into isbn (comcode,goods_id,isbn) values (\'' + comcode + "','" \
+                  + goods_id + "','')"
             out_cursor.execute(sql)
             outdb.commit()
-    else :
+    else:
         for x in out_cursor:
             print("DB 존재 데이터 - " + goods_id)
 
-#isbn_search("aladin","ALADIN281744175")
-#isbn_search("kyobo","4808960534018")
-#isbn_search("yes24","11259630")
+# isbn_search("aladin","477857")
+# isbn_search("kyobo","4808960534018")
+# isbn_search("yes24","11259630")
 
 # YES24 검색 결과 중 전자책 ISBN이 아닌 종이책 ISBN이 입력된 도서가 있음
+
